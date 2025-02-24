@@ -1,4 +1,4 @@
-### NBA-team-analysis 
+### NBA-team-analysis: skill used - R, python, SQL
 
 ### Datasets used for project:
 
