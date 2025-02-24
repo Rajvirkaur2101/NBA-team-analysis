@@ -1,0 +1,883 @@
+---
+title: "What Influence Sucess in NBA"
+authors: "Marcelino Rodriguez, Matias Totz , Nyadual Makuach , Rajvir Kaur, Farhad Ahmady"
+date: "2024-12-01"
+output:
+  pdf_document: default
+  df_print: paged
+  html_document:
+  word_document: default
+header-includes: \usepackage{amsmath}
+
+---
+
+
+```{r}
+options(max.print = 10000)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Our project focuses on understanding what defines success in the NBA. Success in this context can be measured in various ways, such as a team's budget, player salaries, or win percentages. Our goal is to explore how these factors influence success and uncover key drivers behind achieving excellence in the league. In this analysis we will explore:
+
+* Player's Salaries vs Player demographics. We want to see if certain demographics like height, age, weight influence performance and salaries
+* Team Budget vs Team performance : With this we'll investigate relationship between teams budgets and overall performance
+
+
+ 
+# Datasets
+
+The datasets used in the analysis are Players Salary,  NBA demographics,Performance and Coaches dataset(We included more details of the datasets in our report) From the dataset mentioned these, we created two merged datasets, which serve as the foundation for our analysis.
+
+ 
+# Analysis 
+
+Our analysis focuses on the 2020-2021 to 2022-2023 NBA seasons.We will aim to uncover insights on  how player demographics influence their salaries and how it correlate to overall teams success. By applying multiple linear regression, the expected outcome is to identify significant predictors for each season. These predictors will demonstrate their relevance to the model and provide a clearer understanding of how they relate to teams success in the NBA.
+ 
+ 
+# Combined dataset
+
+The final dataset used for analysis consists of 22 columns and 1,468 rows. The columns include:
+
+**Player Information:**
+player_name: The name of the player.
+team_abbreviation: The abbreviation of the team the player belongs to (e.g., "TOR" for Toronto Raptors).
+age: The player's age (in years).
+player_height: The player's height (in centimeters ).
+player_weight: The player's weight (in kilograms ).
+college: The city where the college or university the player attended is located.
+country: The country the player is from.
+draft_year: The year the player was drafted into the NBA or "Undrafted" if not selected.
+draft_round: The round in which the player was drafted (e.g., "1" for the first round, "Undrafted" if not selected).
+draft_number: The overall pick number in the draft (e.g., "8" for the 8th pick, "Undrafted" if not selected).
+season: The NBA season (e.g., "2020-21").
+
+**Performance Stats:**
+gp:  Games played during the season.
+pts: Average points scored per game (points per game).
+reb: Average rebounds per game (includes offensive and defensive rebounds).
+ast: Average assists per game.
+**Advanced Metrics:**
+net_rating: The difference between the team's offensive rating and defensive rating when the player is on the court.
+oreb_pct: Offensive rebound percentage — the percentage of available offensive rebounds grabbed by the player.
+dreb_pct: Defensive rebound percentage — the percentage of available defensive rebounds grabbed by the player.
+usg_pct: Usage percentage — an estimate of the percentage of team plays used by the player while on the court.
+ts_pct: True shooting percentage — a measure of shooting efficiency that accounts for field goals, 3-point field goals, and free throws.
+ast_pct: Assist percentage — an estimate of the percentage of teammates' field goals assisted by the player while on the court.
+
+**Response Variable**
+salary: The player's salary for the corresponding season (in dollars).
+ 
+ 
+ 
+Step one : Prepare the data:
+```{r}
+player_salaries <- read.csv("players_salaries_2020_2023.csv")
+
+head(player_salaries)
+```
+Clean the data:
+```{r}
+player_salaries <- na.omit(player_salaries)
+```
+
+Assigning variables to the seasons we'll be working with below:
+
+```{r}
+player_salaries_2020_21 <- player_salaries[player_salaries$season == "2020-21", ]
+player_salaries_2021_22 <- player_salaries[player_salaries$season == "2021-22", ]
+player_salaries_2022_23 <- player_salaries[player_salaries$season == "2022-23", ]
+```
+ 
+```{r}
+# looking at 2020-2021 season
+tail(player_salaries_2020_21)
+```
+```{r}
+# looking at 2021-2022 season
+tail(player_salaries_2021_22)
+```
+
+```{r}
+# looking at 2022-2023 season
+tail(player_salaries_2022_23)
+```
+
+
+## Create Multiple linear regression model
+
+In this analysis, we have performed a Multiple linear regression where the dependent variable is salary, and the independent variables include age, player height, player weight, games played (GP), points (PTS), rebounds (REB), assists (AST), net rating, offensive rebound percentage (OREB_PCT), defensive rebound percentage (DREB_PCT), usage percentage (USG_PCT), true shooting percentage (TS_PCT), assist percentage (AST_PCT), team abbreviation, college, country, and draft number.
+
+# Step 1: Create a full additive model:
+
+
+
+The first step in this analysis is to create a comprehensive model that includes all possible variables and predictors. To streamline the process of model creation, a function has been developed to automate this step:
+  
+  
+```{r}
+create_model_by_season <- function(players_salaries_Variable) {
+  # Ensure salary is numeric 
+  players_salaries_Variable$salary <- as.numeric(players_salaries_Variable$salary)
+
+  factors <- c("team_abbreviation", "college", "country", "draft_number") 
+
+for (factor in factors) { 
+  if (length(unique(players_salaries_Variable[[factor]])) > 1) { 
+    players_salaries_Variable[[factor]] <- as.factor(players_salaries_Variable[[factor]]) 
+  } else { 
+    players_salaries_Variable[[factor]] <- NULL # Remove columns with only one unique value 
+ } 
+}
+
+ # Full Model
+model <- lm(salary ~ age + player_height + player_weight + gp + pts + reb + ast +net_rating + oreb_pct + dreb_pct + usg_pct + ts_pct + ast_pct + 
+              team_abbreviation + college + country  + draft_number
+              , data = players_salaries_Variable)
+  
+  # Return the model summary
+  return((model))
+}
+
+```
+  
+To create the model, it is necessary to call the function with the corresponding dataset. Note that the dataset has been filtered by season, so we need three separate variables, each holding the data for the respective seasons.
+
+```{r}
+# Create and summarize models for each season
+full_model_2020_21 <- create_model_by_season(player_salaries_2020_21)
+full_model_2021_22 <- create_model_by_season(player_salaries_2021_22)
+full_model_2022_23 <- create_model_by_season(player_salaries_2022_23)
+
+# Print summaries
+#cat("Model Summary for 2020-21 Season:\n")
+print(summary(full_model_2020_21))
+
+#cat("\nModel Summary for 2021-22 Season:\n")
+#print(summary(full_model_2021_22))
+
+#cat("\nModel Summary for 2022-23 Season:\n")
+#print(summary(full_model_2022_23))
+```
+  
+The results obtained from this full model:
+
+  **Adjusted R-squared:**  0.6297 
+  **p-value:** < 2.2e-16
+
+Adjusted R-squared (0.6297): Indicate  that approximately 62.97% of the variation in the dependent variable (player salaries) can be explained by the model, accounting for the number of predictors.
+
+p-value (< 2.2e-16)is less than 0.05 at significance level , suggesting that the model as a whole is statistically significant.
+
+
+## Step 1.1
+
+**Selecting the best additive model**
+  
+Once the Models had been created. It is possible to use the selection methods to create and chose the best additive model for this analysis.
+In this case, the subset predictor method is the one being used to select the best additive method:
+
+Note: Our criteria for selecting the best additive model the criteria is base on:
+
+  * High $R^2$
+  * Low RSE
+  * Low AIC
+  * Low BIC
+  
+
+In this case, **Step Backward Procedure** is the one being used to select the best additive method:
+
+```{r}
+library(olsrr)
+
+```
+
+```{r}
+
+backward_model_2020_2021=ols_step_backward_p(full_model_2020_21, p_val = 0.05)
+
+```
+In order to make this reduce method compatible with the annova command in needs to be saved:
+```{r}
+reduce_model_2020_21<- backward_model_2020_2021$model
+```
+
+To display the information from the model we use:
+```{r}
+summary(backward_model_2020_2021$model)
+```
+
+The results obtained form the above model are:
+
+  **Adjusted R-squared:**  0.6661
+  **p-value:** < 2.2e-16
+  
+Adjusted R-squared (0.6661): This means that approximately 66.61% of the variation in the dependent variable ( player salaries) is explained by the model, after adjusting for the number of predictors.
+
+p-value (< 2.2e-16): small p_value less than 0.05 at significant level suggest that the model is statistically significant. This means there is strong evidence to suggest that the predictors in the model are having a meaningful effect on the dependent variable.
+
+
+
+## Step 1.2
+
+**Create Anonova table to test the new additive model**
+
+From test the new additive model it is necessary to compare with the previous full model and analyze the p value to make sure that the dropped values were not significant and that the model pass the hypothesis test.
+
+
+$$H_0: B_{1} = B_{2...}=  B_{droppedPredictors} = 0   \hspace{ 0.5cm }  VS \hspace{ 0.5cm } H_a: B_{i}\not= 0$$
+
+* The null hypothesis test that all the dropped predictors are insignificant (equal to zero). 
+
+* The alternative hypothesis test that at least one predictor is significant (different from zero) for this model. 
+
+The anova table to compare the models:
+
+```{r}
+anova(reduce_model_2020_21, full_model_2020_21)
+```
+
+From the results from the anova table  we can see that the **p-value** is **0.9564** these being bigger than $\alpha$ at **0.05**. Then we fail to reject the null hypothesis and conclude that the dropped predictors were insignificant and accept our reduce model.
+
+the reduce model then would look like this:
+
+$$\widehat{Salary} = \widehat\beta_{0} +  \widehat\beta_{1} X_{age} + \widehat\beta_{2} X_{playerHeight}  + \widehat\beta_{3} X_{gp} + \widehat\beta_{4} X_{pts} + \widehat\beta_{5} X_{ast} +  \widehat\beta_{6} X_{draftNumber2}  +  \widehat\beta_{7} X_{draftNumber3}+ \widehat\beta_{8} X_{draftNumber4} + \widehat\beta_{9} X_{draftNumber5}$$ 
+
+
+
+# Step 2: Use of the interaction model 
+
+After having a reduce additive model, the next step is to create an interactive model to verify its behavior.
+
+```{r}
+interactive_reduce_model <- function(players_salaries_Variable) {
+ 
+intereactive_model <- lm(salary ~ (age + player_height + gp + pts + ast + draft_number)^2, data=players_salaries_Variable )
+  
+}
+```
+
+
+```{r}
+# Call the funtion to create the interactive model, here we are assuming that the predictor are same... ## important to verify
+interactive_reduce_model_2020_2021 <- interactive_reduce_model(player_salaries_2020_21)
+interactive_reduce_model_2021_2022 <- interactive_reduce_model(player_salaries_2021_22)
+interactive_reduce_model_2022_2023 <- interactive_reduce_model(player_salaries_2022_23)
+
+
+# Print summaries
+#cat("Interactive Model Summary for 2020-21 Season:\n")
+print(summary(interactive_reduce_model_2020_2021))
+
+#cat("\nInteractive Model Summary for 2021-22 Season:\n")
+#print(summary(interactive_reduce_model_2021_2022))
+
+#cat("\nInteractive Model Summary for 2022-23 Season:\n")
+#print(summary(interactive_reduce_model_2022_2023))
+```
+  
+The results obtained from the above model are :
+
+  **Adjusted R-squared:**  0.7698 
+  **p-value:** < 2.2e-16
+  
+Adjusted R-squared (0.7698): This value indicates that approximately 76.98% of the variation in the dependent variable is explained by the interactive model, after adjusting for the number of predictors.
+  
+p-value (< 2.2e-16): The small p-value indicates that the model as a whole is statistically significant.
+  l
+
+**Test the hypothesis test**
+$$H_0: B_{1} = B_{2...}=  B_{n} = 0   \hspace{ 0.5cm }  VS \hspace{ 0.5cm } H_a: B_{i}\not= 0$$
+
+* The null hypothesis test that all of the predictors are insignificant (equal to zero). 
+
+* The alternative hypothesis test that at least one predictor is significant (different from zero) for this model. 
+
+The summary shows that the global p value for the interaction model is 2.2e-16, this value is less that $\alpha$, therefore we reject the null hypothesis in favor to the alternative and conclude that at least one of the predictors are significant for the model.
+
+
+## Step 2.1
+
+**Reduced Interaction Model**
+  
+From the previous summary, it is possible to identify p values that are bigger than $\alpha = 0.05$, therefore they can be dropped to simplify the model. 
+
+The new reduce interaction model should hold only the following predictors.
+$$\widehat{Salary} = \widehat\beta_{0} +  \widehat\beta_{1} X_{age} + \widehat\beta_{2} X_{playerHeight}  + \widehat\beta_{3} X_{gp} + \widehat\beta_{4} X_{pts} + \widehat\beta_{5} X_{ast} +  \widehat\beta_{6} X_{draftNumber}+  \widehat\beta_{7} X_{age} X_{pts}+ \widehat\beta_{8} X_{age} X_{ast} + \widehat\beta_{9} X_{draft_number} X_{pts}$$   
+To create the reduction reduce interaction model:
+```{r}
+reduce_interactive_model <- function(players_salaries_Variable) {
+ 
+  reduce_intereactive_model <- lm(salary ~ age + player_height + gp + pts + ast + factor(draft_number) +      age*pts + age*ast  + pts*draft_number, data=players_salaries_Variable)
+  
+}
+```
+                      
+
+
+```{r}
+# Call the funtion to create the interactive model, here we are assuming that the predictor are same... ## important to verify
+reduce_interactive_model_2020_2021 <- reduce_interactive_model(player_salaries_2020_21)
+reduce_interactive_model_2021_2022 <- reduce_interactive_model(player_salaries_2021_22)
+reduce_interactive_model_2022_2023 <- reduce_interactive_model(player_salaries_2022_23)
+
+
+# Print summaries
+#cat("Interactive Model Summary for 2020-21 Season:\n")
+print(summary(reduce_interactive_model_2020_2021))
+
+#cat("\nInteractive Model Summary for 2021-22 Season:\n")
+#print(summary(interactive_reduce_model_2021_2022))
+
+#cat("\nInteractive Model Summary for 2022-23 Season:\n")
+#print(summary(interactive_reduce_model_2022_2023))
+```
+  
+## Step 2.2
+ 
+**Create Anonova table to test the new reduced interaction model**
+
+From test the new interaction model it is necessary to compare with the previous full interaction model and analyze the p value to make sure that the dropped values were not significant and that the model pass the hypothesis test.
+
+
+$$H_0: B_{1} = B_{2...}=  B_{droppedPredictors} = 0   \hspace{ 0.5cm }  VS \hspace{ 0.5cm } H_a: B_{i}\not= 0$$
+
+* The null hypothesis test that all the dropped predictors are insignificant (equal to zero). 
+
+* The alternative hypothesis test that at least one predictor is significant (different from zero) for this model. 
+
+The anova table to compare the models:
+
+```{r}
+anova(reduce_interactive_model_2020_2021,interactive_reduce_model_2020_2021)
+```
+
+From the results from the annova table  we can see that the **p-value** is **0.02035 ** these smaller than $\alpha$ at **0.05**. Then we reject the null hypothesis and conclude that the dropped predictors were insignificant and accept the reduce interaction model.
+
+the reduce interaction model then would look like this:
+
+$$\widehat{Salary} = \widehat\beta_{0} +  \widehat\beta_{1} X_{age} + \widehat\beta_{2} X_{playerHeight}  + \widehat\beta_{3} X_{gp} + \widehat\beta_{4} X_{pts} + \widehat\beta_{5} X_{ast} +  \widehat\beta_{6} X_{draftNumber}+  \widehat\beta_{7} X_{age} X_{pts}+ \widehat\beta_{8} X_{age} X_{ast} + \widehat\beta_{9} X_{draft_number} X_{pts}$$  
+
+# Step 3: Use of Higher order
+  
+The next step is to verify if the model can have any of the terms a higher order. To do this the GGally package is used:
+
+The first thing to used this is to reduce the data sets to hold only the variables that we are analyzing: those are:
+  * Salary
+  * Age
+  * playerHeight
+  * gp
+  * pts
+  * draftNumber
+ 
+The colunms that were removed for the analysis are:
+```{r}
+removed_columns <- c("dreb_pct", "usg_pct", "ast_pct", "player_weight", "net_rating", "college", "ts_pct", "team_abbreviation", "country", "oreb_pct", "reb", "player_name", "season")
+```
+ 
+  
+The new data sets would look like that:
+
+```{r}
+
+suppressPackageStartupMessages(library(dplyr))
+
+
+```
+
+```{r}
+
+reduce_player_salaries_2020_21 <- select(player_salaries_2020_21,  -all_of(removed_columns))
+
+reduce_player_salaries_2021_22 <- select(player_salaries_2021_22, -all_of(removed_columns))
+
+reduce_player_salaries_2022_23 <- select(player_salaries_2022_23,  -all_of(removed_columns))
+```
+Display the new dataset:
+```{r}
+head(reduce_player_salaries_2022_23)
+```
+  
+To display the charts to see how the response looks with respect to each independent variable use the command ggpairs():
+
+```{r}
+suppressPackageStartupMessages(library(GGally))
+
+```
+
+
+```{r}
+ggpairs(reduce_player_salaries_2020_21, progress = FALSE) 
+#ggpairs(reduce_player_salaries_2020_21)
+ggpairs(reduce_player_salaries_2020_21, progress = FALSE,lower = list(continuous = "smooth_loess", combo ="facethist", discrete = "facetbar", na = "na"))
+
+```
+
+ 
+From the graph above, it is possible that the gp, pts and ast variables might have a higher order relationship.
+
+
+
+## Step 3.1
+
+**Add higher Order Relationships**
+
+The next step after identifying the possible higher order relationship variables, is to add those relationships and add them to the model.
+
+Lets start with the gp (games play):
+```{r}
+gp_higer_model_2020_2021 <- lm(salary ~ age + player_height + gp + I(gp^2) + pts + ast + draft_number + age*pts + age*ast  + pts*draft_number, data=player_salaries_2020_21)
+
+summary(gp_higer_model_2020_2021)
+```
+
+From the summary it is evident that the quadratic level is not applicable for the model. 
+
+Moving on to the next variable pts (Average points scored per game):
+```{r}
+pts_higer_model_2020_2021 <- lm(salary ~ age + player_height + gp + pts + I(pts^2) + ast + draft_number + age*pts + age*ast  + pts*draft_number, data=player_salaries_2020_21)
+
+summary(pts_higer_model_2020_2021)
+```
+
+From the summary it is evident that the quadratic level is applicable for the model, and the age variable. 
+
+Moving on to the next variable ast (Average assists per game.):
+
+```{r}
+ast_higer_model_2020_2021 <- lm(salary ~ age + player_height + gp + pts + I(ast^2) + ast + draft_number + age*pts + age*ast  + pts*draft_number, data=player_salaries_2020_21)
+
+summary(ast_higer_model_2020_2021)
+```
+
+
+From the summary it is evident that the quadratic level is not applicable for the model for this variable.
+
+Moving on to the next (demographic) variable age (players age):
+
+```{r}
+age_higer_model_2020_2021 <- lm(salary ~ age + player_height + gp + pts + I(age^2) + ast + draft_number + age*pts + age*ast  + pts*draft_number, data=player_salaries_2020_21)
+
+summary(age_higer_model_2020_2021)
+```
+
+From the summary it is evident that the quadratic level is applicable for the model, and the age variable. Therefore the next step is to move on to the cubic level.
+
+```{r}
+age_higer_model_2020_2021_cubic <- lm(salary ~ age + player_height + gp + pts + I(age^2) + I(age^3) + ast + draft_number + age*pts + age*ast  + pts*draft_number, data=player_salaries_2020_21)
+
+summary(age_higer_model_2020_2021_cubic)
+```
+
+From the summary it is visible that the cubic level does not apply for the **age** variable.
+
+
+
+Moving on to the next variable  player_height (players height):
+
+```{r}
+player_height_higer_model_2020_2021 <- lm(salary ~ age + player_height + gp + pts + I(age^2) + I(player_height^2) + ast + draft_number + age*pts + age*ast  + pts*draft_number, data=player_salaries_2020_21)
+
+summary(player_height_higer_model_2020_2021)
+```
+
+From the summary it is evident that the quadratic level is not applicable for the model for this variable.
+
+
+In conclusion, there is only one evident higher level for the variables in the existent model. The predictive model gets updated adding the new predictor $I(age^2)$.
+$$\widehat{Salary} = \widehat\beta_{0} +  \widehat\beta_{1} X_{age} + \widehat\beta_{2} X_{playerHeight}  + \widehat\beta_{3} X_{gp} + \widehat\beta_{4} X_{pts} + \widehat\beta_{5} X_{ast} +  \widehat\beta_{6} X_{draftNumber}+  \widehat\beta_{7} X_{age} X_{pts}+ \widehat\beta_{8} X_{age} X_{ast} + \widehat\beta_{9} X_{draft_number} X_{pts} +  \widehat\beta_{10} X_{I(age^2)}$$  
+```{r}
+age_higer_model_2020_2021 <- lm(salary ~ age + player_height + gp + pts + I(age^2) + ast + draft_number + age*pts + age*ast  + pts*draft_number, data=player_salaries_2020_21)
+
+summary(age_higer_model_2020_2021)
+```
+
+
+
+# Step 4: Regression Diagnostics
+
+
+In this section assumptions will be investigate, to confirm that the selected model meets all the assumption and is well justify.
+
+## Step 4.1
+
+**Linear Assumption**
+The linear regression model assumes that there is a straight-line (linear) relationship between the predictors and the response.
+If the true relationship is far from linear, then virtually all of the conclusions that we draw from the fit are suspect and the prediction accuracy of the model can be significantly reduced
+
+```{r}
+ggplot(age_higer_model_2020_2021, aes(x=.fitted, y=.resid)) +
+geom_point() +geom_smooth()+
+geom_hline(yintercept = 0)
+```
+ 
+The adjuster r squared for the quadratic model for age is 0.7684 indicates the variation in salary that can be explained by this model is 76% with RMSE 4.55.
+
+## Step 4.2
+  
+**Independence Assumption**
+
+```{r}
+head(reduce_player_salaries_2020_21)
+```
+```{r}
+#Create the group as cathegorical:
+
+data <- data.frame(draft_number = reduce_player_salaries_2020_21$draft_number)
+# Define the cut points and labels 
+cut_points <- c(-Inf, 1, 2, 3, 4, Inf) 
+labels <- c("Level 1", "Level 2", "Level 3", "Level 4", "Level 5") 
+
+# Convert numeric variable to categorical 
+data$categorical_var <- cut(data$draft_number, breaks = cut_points, labels = labels)
+
+# Assign the new categorical variable back to the original data frame
+reduce_player_salaries_2020_21$draft_number_grouped <- data$categorical_var 
+# Print the updated original data frame to verify 
+print(head(reduce_player_salaries_2020_21))
+
+```
+  
+  
+```{r}
+
+reduce_player_salaries_2020_21$residuals <- residuals(age_higer_model_2020_2021) 
+
+# Create box plots of residuals by a categorical variable 
+ggplot(reduce_player_salaries_2020_21, aes(x = draft_number_grouped, y = residuals)) + geom_boxplot() + labs(title = "Box Plot of Residuals by draft_number_grouped", x = "draft_number_grouped", y = "Residuals") + theme_minimal()
+  
+```
+
+From the picture above we can assume that the Independence Assumption is met.
+  
+## Step 4.3
+**Equal Variance Assumption**
+  
+```{r}
+ggplot(age_higer_model_2020_2021, aes(x=.fitted, y=.resid)) +
+geom_point(colour = "purple") +
+geom_hline(yintercept = 0) +
+geom_smooth(colour = "green4")+
+ggtitle("Residual plot: Residual vs Fitted values")
+```
+
+
+```{r}
+bcmodel_log=lm(log(salary) ~ age + player_height + gp + pts + I(age^2) + ast + draft_number + age*pts + age*ast  + pts*draft_number, data=player_salaries_2020_21)
+summary(bcmodel_log)
+#bptest(bcmodel1)
+#summary(bcmodel1)
+
+
+#+ age*pts + age*ast  este es del normal
+#+ + age*pts + age*ast  este es del hemoscedasticity
+```
+
+From the previous model, we can drop some of the interactions: 
+
+```{r}
+bcmodel_log_reduce=lm(log(salary) ~ age + player_height + gp + pts + I(age^2) + ast + draft_number + pts*draft_number, data=player_salaries_2020_21)
+summary(bcmodel_log_reduce)
+```
+
+```{r}
+suppressPackageStartupMessages(library(lmtest))
+```
+
+
+```{r}
+bptest(bcmodel_log_reduce)
+```
+
+This number is smaller that $\alpha$ at **0.05**
+  
+## Step 4.4
+
+**Normality Assumption**
+  
+```{r}
+library(MASS) #for the boxcox()function
+bc=boxcox(age_higer_model_2020_2021,lambda=seq(-1,1))
+
+
+```
+```{r}
+#extract best lambda
+bestlambda=bc$x[which(bc$y==max(bc$y))]
+bestlambda
+```
+From the command above we got that the best lamba is in the range of -0.1 to 0.1 
+ 
+Then choosing the values 0 and 0.09
+ 
+```{r}
+bcmodel1=lm(log(salary) ~ age + player_height + gp + pts + I(age^2) + ast + draft_number  + pts*draft_number, data=player_salaries_2020_21)
+summary(bcmodel1)
+```
+ 
+```{r}
+shapiro.test(residuals((bcmodel1)))
+```
+ 
+```{r}
+ggplot(data=player_salaries_2020_21, aes(residuals(bcmodel1))) +
+geom_histogram(breaks = seq(-1,1,by=0.1), col="green3", fill="green4") +
+labs(title="Histogram for residuals") +
+labs(x="residuals", y="Count")
+
+
+```
+```{r}
+#normal QQ plot
+ggplot(data=player_salaries_2020_21, aes(sample=bcmodel_log_reduce$residuals)) +
+stat_qq() +
+stat_qq_line()
+#optional histogram
+par(mfrow=c(1,2))
+
+```  
+  
+The outputs show that the residual data have normal distribution (from histogram and Q-Q plot).
+Shapiro-Wilk normality test also confirms that the residuals are normally distributed as the p-
+value=0.07742 >0.05.We fail to reject the null hypothesis that we have normality.
+
+
+## Step 4.5
+**Multicollinearity Assumption**
+  
+During this analysis, it is expected to have a Multicollinearity, due to the interactions between variables as $I(age^2)$ that would be strong related to the age predictor. However this interaction is being ignored if is shown in the analysis. 
+
+```{r}
+#install.packages("mctest")
+library(mctest)
+imcdiag(bcmodel_log_reduce, method="VIF")
+
+```
+  
+As assumed the Multicollinearity between the variables age and $I(age^2)$ is present. This is to be ignore, That being said the model meets the Multicollinearity Assumption.
+  
+  
+## Step 4.6
+**Outliers**
+
+In this section we are analyzing the outliers if present and if they are influential in the behaviour of the data and the model:
+
+```{r}
+plot(bcmodel_log_reduce,which=5)
+```
+
+From the graphic, it is not evident any bad behavior, therefore a deeper analysis is required:
+```{r}
+player_salaries_2020_21[cooks.distance(bcmodel_log_reduce)>0.5,]
+```
+
+```{r}
+plot(bcmodel_log_reduce,pch=18,col="red",which=c(4))
+```
+
+From this analysis it is noticeable that there are no strange behavior from outliers they are under the cook distance 0.06 and that is lower to our set 0.05 value. Form this analysis we can conclude that there is no necessary to study the leverage points.
+
+# Conclusion:
+
+The final model for the Regression analysis is:
+
+```{r}
+summary(bcmodel_log_reduce)
+```
+
+Construct our final selected model:
+
+$$\widehat{Salary} = \widehat\beta_{0} +  \widehat\beta_{1} X_{age} + \widehat\beta_{2} X_{playerHeight}  + \widehat\beta_{3} X_{gp} + \widehat\beta_{4} X_{pts} + \widehat\beta_{5} X_{ast} +  \widehat\beta_{6} X_{I(age^2)}  +  \widehat\beta_{7} X_{draftNumber}+ \widehat\beta_{8} X_{draftNumber4} * X_{pts}$$ 
+This variables explain 71.89% of the data and the model .
+
+
+
+*Intercept: -7.305*
+
+Estimate: This is the expected salary when all predictor variables are zero
+
+*age: 0.294*
+
+Estimate: For each one-year increase in age, the salary increases by approximately 0.294 units, holding other factors constant.
+
+*player_height: 0.018*
+
+Estimate: For each centimeter increase in height, the salary increases by 0.018 units.
+
+*gp (games played): 0.001*
+
+Estimate: For each additional game played, the salary increases by 0.001 units.
+
+*pts (points per game): 0.040*
+
+Estimate: For each additional point scored per game, the salary increases by 0.040 units.
+
+*I(age^2): -0.004*
+
+Estimate: The squared age term is included to capture any non-linear relationship between age and salary. Here, a negative coefficient suggests diminishing returns of age on salary at higher ages.
+
+*ast (assists per game): 0.115*
+
+Estimate: For each additional assist per game, the salary increases by 0.115 units.
+
+*draft_number: -0.339*
+
+Estimate: For each increase in draft number (i.e., a worse draft position), the salary decreases by 0.339 units.
+
+*pts:draft_number (interaction term): 0.012*
+
+Estimate: This indicates the combined effect of points per game and draft number on salary. For each unit increase in the product of points per game and draft number, the salary increases by 0.012 units.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
